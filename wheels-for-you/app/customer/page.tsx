@@ -13,6 +13,7 @@ import {
 import { auth, db } from "../../lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import MapBookingCard from "../../components/MapBookingCard";
 
 type Ride = {
   id: string;
@@ -25,8 +26,6 @@ type Ride = {
 };
 
 export default function CustomerPage() {
-  const [pickup, setPickup] = useState("");
-  const [drop, setDrop] = useState("");
   const [vehicleType, setVehicleType] = useState("Mini");
   const [fare, setFare] = useState(0);
   const [rides, setRides] = useState<Ride[]>([]);
@@ -53,9 +52,12 @@ export default function CustomerPage() {
     setFare(baseFare);
   };
 
-  const handleBookRide = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleBookRide = async (
+    pickup: string,
+    drop: string,
+    pickupCoords?: { lat: number; lng: number },
+    dropCoords?: { lat: number; lng: number }
+  ) => {
     try {
       const user = auth.currentUser;
 
@@ -64,20 +66,25 @@ export default function CustomerPage() {
         return;
       }
 
+      if (!pickup || !drop) {
+        alert("Please select pickup and drop locations");
+        return;
+      }
+
       await addDoc(collection(db, "rides"), {
         customerId: user.uid,
         pickup,
         drop,
+        pickupCoords: pickupCoords || null,
+        dropCoords: dropCoords || null,
         vehicleType,
         fare,
+        paymentMode: "cash",
         status: "requested",
         createdAt: serverTimestamp(),
       });
 
       alert("Ride booked successfully!");
-
-      setPickup("");
-      setDrop("");
       setVehicleType("Mini");
       setFare(0);
     } catch (error: any) {
@@ -134,17 +141,12 @@ export default function CustomerPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f5f7fb",
+        background: "linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)",
         padding: "30px",
         fontFamily: "Arial, sans-serif",
       }}
     >
-      <div
-        style={{
-          maxWidth: "1100px",
-          margin: "0 auto",
-        }}
-      >
+      <div style={{ maxWidth: "1180px", margin: "0 auto" }}>
         <div
           style={{
             background: "white",
@@ -164,8 +166,8 @@ export default function CustomerPage() {
             }}
           >
             <div>
-              <h1 style={{ margin: 0, fontSize: "32px", color: "#1e293b" }}>
-                Fare Enough - Customer Dashboard
+              <h1 style={{ margin: 0, fontSize: "34px", color: "#111827" }}>
+                Fare Enough - Customer Dashboard 🚕
               </h1>
               <p style={{ marginTop: "8px", color: "#475569" }}>
                 Because every Fare should be Fair!
@@ -192,114 +194,17 @@ export default function CustomerPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "1.1fr 0.9fr",
             gap: "24px",
           }}
         >
-          <div
-            style={{
-              background: "white",
-              padding: "24px",
-              borderRadius: "16px",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
-            }}
-          >
-            <h2 style={{ marginTop: 0, color: "#1e293b" }}>Book Your Ride</h2>
-            <p style={{ color: "#64748b", marginBottom: "20px" }}>
-              Enter trip details and confirm your booking.
-            </p>
-
-            <form
-              onSubmit={handleBookRide}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Enter pickup location"
-                value={pickup}
-                onChange={(e) => setPickup(e.target.value)}
-                style={{
-                  padding: "12px",
-                  borderRadius: "10px",
-                  border: "1px solid #cbd5e1",
-                }}
-              />
-
-              <input
-                type="text"
-                placeholder="Enter drop location"
-                value={drop}
-                onChange={(e) => setDrop(e.target.value)}
-                style={{
-                  padding: "12px",
-                  borderRadius: "10px",
-                  border: "1px solid #cbd5e1",
-                }}
-              />
-
-              <select
-                value={vehicleType}
-                onChange={(e) => setVehicleType(e.target.value)}
-                style={{
-                  padding: "12px",
-                  borderRadius: "10px",
-                  border: "1px solid #cbd5e1",
-                }}
-              >
-                <option value="Mini">Mini</option>
-                <option value="Sedan">Sedan</option>
-                <option value="SUV">SUV</option>
-              </select>
-
-              <button
-                type="button"
-                onClick={calculateFare}
-                style={{
-                  background: "#0f172a",
-                  color: "white",
-                  border: "none",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
-                Calculate Fare
-              </button>
-
-              <div
-                style={{
-                  background: "#f8fafc",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  border: "1px solid #e2e8f0",
-                  fontWeight: "bold",
-                  color: "#0f172a",
-                }}
-              >
-                Estimated Fare: ₹{fare}
-              </div>
-
-              <button
-                type="submit"
-                style={{
-                  background: "#22c55e",
-                  color: "white",
-                  border: "none",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
-                Book Ride
-              </button>
-            </form>
-          </div>
+          <MapBookingCard
+            vehicleType={vehicleType}
+            setVehicleType={setVehicleType}
+            fare={fare}
+            calculateFare={calculateFare}
+            handleBookRide={handleBookRide}
+          />
 
           <div
             style={{
@@ -309,9 +214,9 @@ export default function CustomerPage() {
               boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
             }}
           >
-            <h2 style={{ marginTop: 0, color: "#1e293b" }}>My Rides</h2>
+            <h2 style={{ marginTop: 0, color: "#111827" }}>My Rides</h2>
             <p style={{ color: "#64748b", marginBottom: "20px" }}>
-              Track your booked rides in real time.
+              Track your ride lifecycle in real time.
             </p>
 
             {loading ? (
@@ -319,13 +224,7 @@ export default function CustomerPage() {
             ) : rides.length === 0 ? (
               <p>No rides booked yet.</p>
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "14px",
-                }}
-              >
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                 {rides.map((ride) => (
                   <div
                     key={ride.id}
@@ -340,6 +239,7 @@ export default function CustomerPage() {
                     <p><strong>Drop:</strong> {ride.drop}</p>
                     <p><strong>Vehicle:</strong> {ride.vehicleType}</p>
                     <p><strong>Fare:</strong> ₹{ride.fare}</p>
+                    <p><strong>Payment:</strong> Cash</p>
                     <p>
                       <strong>Status:</strong>{" "}
                       <span
